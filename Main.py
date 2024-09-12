@@ -17,6 +17,7 @@ from groq import Groq
 from data.M_CommonFunctions import MARCHEN_CommonFunctions
 
 
+import ast
 import time
 import sys
 import colorama
@@ -27,6 +28,8 @@ import pyfiglet
 
 
 
+
+colorama.init()
 
 
 
@@ -42,11 +45,14 @@ class MARCHEN_Terminal_Application(MARCHEN_CommonFunctions):
 		self.model_prompt_dictionnary = {}
 		self.mj_data_dictionnary = {}
 
+		self.short_memory = []
+		self.global_memory = []
+
 		self.character_test_dictionnary = {
 			"Name": "Robin",
 			"Age": 23,
 			"Class":"Wizard",
-			"Weapon": [
+			"Inventory": [
 				"Magic stick",
 				"Spell book",
 			],
@@ -62,7 +68,7 @@ class MARCHEN_Terminal_Application(MARCHEN_CommonFunctions):
 
 
 		#generate the global story
-		self.global_context = self.prompt_function(self.model_prompt_dictionnary["promptGlobalContext"])
+		self.global_context = self.prompt_function(None, self.model_prompt_dictionnary["promptGlobalContext"], False)
 		#print(self.story)
 
 
@@ -76,9 +82,89 @@ class MARCHEN_Terminal_Application(MARCHEN_CommonFunctions):
 			character_prompt += "%s : %s"%(key, value)
 
 
-		self.character_context = self.prompt_function(character_prompt, True)
+		for i in range(5):
+			try:
+				self.character_context = self.prompt_function(self.character_test_dictionnary, character_prompt, True)
+				self.character_context.replace("'", '"')
 
-		print(self.character_context)
+
+				#print("%s\n\n\n\n"%self.character_context)
+				#try to convert the character context into a dictionnary to start the adventure
+				answer_dictionnary = ast.literal_eval(self.character_context)
+			except Exception as e:
+				self.display_error_function("Error while generating!\n%s"%e)
+			else:
+				break
+
+		for key, value in answer_dictionnary.items():
+			self.display_notification_function(key)
+			print(value)
+
+		
+
+
+		
+
+		#GLOBAL STORY LOOP
+		for i in range(10):
+			player_choice = input("...")
+			if player_choice == "p":
+				exit()
+
+			#print(answer_dictionnary["option"], type(answer_dictionnary["option"]))
+			new_prompt = """
+suite à cette situation : [%s]
+
+Le joueur a fait le choix de l'option : %s
+
+Génère la suite de l'histoire
+"""%(answer_dictionnary["context"], answer_dictionnary["option"][int(player_choice)-1])
+			print(new_prompt)
+
+
+			#generate again if syntax error
+			for y in range(5):
+				try:
+					answer = self.prompt_function(self.character_test_dictionnary, new_prompt, True, self.short_memory)
+					answer.replace("'", '"')
+					answer_dictionnary = ast.literal_eval(answer)
+				except Exception as e:
+					self.display_error_function("error\n%s"%e)
+					continue
+				else:
+					self.display_notification_function("OUTPUT")
+					
+
+					self.display_title_function(answer_dictionnary["context"])
+					for i in range(len(answer_dictionnary["option"])):
+						print(colored(i+1, "cyan"), answer_dictionnary["option"][i])
+
+
+
+					self.short_memory.append(answer_dictionnary["context"])
+					self.display_notification_function("VALUE APPENDED")
+					if len(self.short_memory) > 10:
+						self.display_notification_function("VALUE POPED")
+						self.short_memory.pop(0)
+
+
+
+
+					break
+
+
+
+
+			#print(answer_dictionnary)
+
+			
+			
+
+
+			
+
+
+
 
 
 

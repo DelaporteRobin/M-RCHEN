@@ -20,6 +20,7 @@ import colorama
 import os 
 import pyfiglet
 import json
+import ast
 
 
 
@@ -37,6 +38,9 @@ class MARCHEN_CommonFunctions():
 
 	def display_notification_function(self, message):
 		print(colored(str(message), "yellow"))
+
+	def display_title_function(self, message):
+		print(colored(str(message), "magenta"))
 
 
 
@@ -56,31 +60,73 @@ class MARCHEN_CommonFunctions():
 
 
 
-	def prompt_function(self, prompt, generate_object=False):
+	def prompt_function(self, character_dictionnary, prompt, generate_object=False, context=None):
 		self.display_notification_function("Starting generation...")
 
+		
 
 
-		if generate_object == True:
-			prompt += """
-
-"""
 		try:
 			client = Groq(
 				api_key = os.environ.get("GROQ_API_KEY"),
 				)
-			chat_completion = client.chat.completions.create(
-				messages = [
-					{
-						"role":"user",
-						"content":prompt.encode("utf-8").decode("utf-8"),
-					}
-				],
-				model = "mixtral-8x7b-32768"
-				
-			)
+			if generate_object == False:
+				chat_completion = client.chat.completions.create(
+					messages = [
+						{
+							"role":"user",
+							"content":prompt.encode("utf-8").decode("utf-8"),
+						}
+					],
+					model = "mixtral-8x7b-32768"
+					
+				)
+			else:
+				#self.display_error_function(context)
+				if context != None:
+					context_history = "\n".join(context)
+					prompt = """
+Voici un historique des dernières actions menées afin de générer une suite cohérente :
+%s
+
+%s
+"""%(context_history, prompt)
+
+				#self.display_title_function(prompt)
+				#os.system("pause")
+				player_item_list = "; ".join(character_dictionnary["Inventory"])
+				system_prompt = """
+En aucun cas le joueur ne peut utiliser ou avoir en sa possession dans l'histoire
+un objet qui ne figure pas dans son inventaire! (sauf si le joueur ramasse un object lors d'une action de l'histoire)
+
+Actuellement, voici l'inventaire du joueur : %s
+
+En réponse à ce prompt, retourne un dictionnaire python de la forme suivante:
+
+{
+	'context' : str('la partie ou suite de l'histoire que tu as généré et que tu proposes au joueur'),
+	'dilemna' : str('le choix que tu proposes au joueur'),
+	'option' : [option1, option2, ..., option 5 max],
+}
+
+LES OPTIONS PROPOSEES DOIVENT ETRE COURTE ET SIMPLE A COMPRENDRE
+RESPECTE LE PLUS POSSIBLE LA SYNTAXE D'UN DICTIONNAIRE PYTHON
+"""%player_item_list
+				chat_completion = client.chat.completions.create(
+					messages = [
+						{
+							"role":"system",
+							"content": system_prompt,
+						},
+						{
+							"role":"user",
+							"content":prompt.encode("utf-8").decode("utf-8"),
+						}
+					],
+					model = "mixtral-8x7b-32768"
+				)
 		except Exception as e:
-			self.display_error_function("Failed to generate")
+			self.display_error_function("Failed to generate\n%s"%e)
 		else:
 			self.display_success_function("Generation done!")
 			return chat_completion.choices[0].message.content
