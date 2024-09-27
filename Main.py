@@ -8,7 +8,6 @@ from textual import events
 from textual.containers import ScrollableContainer, Grid, Horizontal, Vertical, Container, VerticalScroll
 from textual import on, work
 
-
 from termcolor import *
 from datetime import datetime
 from groq import Groq
@@ -23,6 +22,7 @@ import sys
 import colorama
 import os 
 import pyfiglet
+
 
 
 
