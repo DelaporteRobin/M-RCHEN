@@ -5,6 +5,7 @@ import sys
 lib_list = [
 	"termcolor",
 	"datetime",
+	"random",
 	"groq",
 	"ast",
 	"time",
@@ -28,6 +29,7 @@ for lib in lib_list:
 from termcolor import *
 from datetime import datetime
 from groq import Groq
+from random import randrange
 
 
 from data.M_CommonFunctions import MARCHEN_CommonFunctions
@@ -51,20 +53,6 @@ colorama.init()
 class Application:
 	def __init__(self):
 
-
-
-
-		print(colored(pyfiglet.figlet_format("M-RCHEN", font="the_edge"), "red"))
-		print(colored(pyfiglet.figlet_format("Console version", font="digital")))
-
-
-		#check if the groq api key is set
-		value_key = os.environ.get("GROQ_API_KEY")
-		if type(value_key) == None:
-			print(colored("Impossible to get api key!", "red"))
-			return
-		else:
-			print(colored("Key found\n%s"%value_key, "green"))
 
 
 		self.prompt_dictionnary = {}
@@ -95,12 +83,27 @@ class Application:
 				"Magic stick",
 				"Spell book",
 			],
-			"Attack":6,
-			"Defense":3,
-			"Dexterity":4,
-			"Eloquence":7,
-			"Agility":5,
+			"Skills": {
+				"attaque":6,
+				"défense":2,
+				"armure lourde":2,
+				"armure légère":7,
+				"arme lourde":2,
+				"arme légère":7,
+				"dextérité":2,
+				"éloquence":7,
+				"agilité":5,
+				"magie guérison":3,
+				"magie élémentaire":1,
+				"magie occulte":0,
+				"magie illusoire":0,
+			}
 		}
+
+
+
+
+
 
 
 
@@ -119,7 +122,7 @@ class Application:
 
 
 
-	def prompt_function(self, system="", prompt=""):
+	def prompt_function(self, system="", prompt="", name= ""):
 
 
 		#add context in prompt
@@ -130,10 +133,10 @@ class Application:
 			for action in self.memory_dictionnary["ShortMemory"]:
 				prompt += "		. %s"%action
 		"""
-		print(colored(self.memory_dictionnary["ShortMemory"], "red"))
+		#print(colored(self.memory_dictionnary["ShortMemory"], "red"))
 
 
-		print(colored("STARTING TO GENERATE", "yellow"))
+		print(colored("STARTING TO GENERATE [%s]"%name, "yellow"))
 		try:
 			client = Groq(
 				api_key = os.environ.get("GROQ_API_KEY"),
@@ -154,7 +157,6 @@ class Application:
 			)
 		except Exception as e:
 			print(colored("Impossible to generate!\n%s"%e, "red"))
-			sys.exit()
 		else:
 			print(colored("Generated", "green"))
 			return (chat_completion.choices[0].message.content).encode("utf-8").decode("utf-8")
@@ -346,6 +348,10 @@ Créé une première situation pour le joueur, qu'est-il sur le point de faire, 
 		while True:
 
 
+			os.system("cls")
+			print(colored(pyfiglet.figlet_format("\nM-RCHEN", font="the_edge"), "red"))
+
+
 			
 			print(colored("\n\n\nCURRENT SITUATION\n", "magenta"))
 			print(self.current_situation)
@@ -374,11 +380,11 @@ Génère une liste python contenant 3 phrases qui seront les prochaines actions 
 			#AND CONVERT THEM INTO A PYTHON LIST
 			while True:
 				try:
-					generated = (self.prompt_function(self.system_general_mj_rules, self.prompt_options))
+					generated = (self.prompt_function(self.system_general_mj_rules, self.prompt_options, "OPTIONS"))
 					self.options = ast.literal_eval(generated)
 				except Exception as e:
 					print(colored("Wrong options generation\n%s"%e, "red"))
-					print(generated)
+					print(colored(generated, "red"))
 					continue
 				else:
 					break
@@ -420,6 +426,60 @@ Créé un nouveau résumé de cette histoire en gardant toutes les informations 
 """%(self.memory_dictionnary["LongMemory"], self.current_situation)
 
 
+			
+			self.prompt_risk_detection = """
+Suite à cette situation : 
+[%s]
+
+Le joueur a choisi de faire cette action : [%s]
+
+-Entre 1 et 100, à quel point cette action est risquée / difficile à faire / demande des compétences particulières?
+-Tu dois retourner uniquement un nombre entre 1 et 100 SANS TEXTE!
+"""%(self.current_situation, self.options[int(player_input)])
+			while True:
+				try:
+					risk_value = int(self.prompt_function(self.system_general_number_rules, self.prompt_risk_detection, "RISK_DETECTION"))
+				except Exception as e:
+					print(colored(e, "red"))
+					continue
+				else:
+					print(colored("Risk value generated : %s"%(risk_value), "yellow"))
+					break
+
+
+
+
+			if risk_value > 45:
+				#LAUNCH THE DICE ROLL PROCESS
+				self.prompt_skill_detection = """
+Suite à cette situation : 
+[%s]
+
+Le joueur a choisi de faire cette action : [%s]
+
+Retourne le nom d'une ou plusieurs compétences parmis les compétences du joueur qui pourraient être concernées
+par le fait de faire cette action de cette manière
+
+- tu dois retourner une liste python 
+- la syntaxe est [competence1, competence2, ..., competencen]
+
+- n'ajoute une compétence que si elle est vraiment logiquement concernées par cette situation
+
+- tu n'es pas obligé de mettre plusieurs compétences
+- tu n'es pas obligé de mettre plusieurs compétences
+- tu n'es pas obligé de mettre plusieurs compétences
+
+Voici la liste des compétences du joueur:
+%s
+"""%(self.current_situation, self.options[int(player_input)],list(self.character_test_dictionnary["Skills"].keys()))
+
+				self.skill_list = self.prompt_function(self.system_general_python_rules, self.prompt_skill_detection, "SKILL_LIST")
+				print("SKILLS")
+				print(self.skill_list)
+				os.system("pause")
+				
+
+
 
 
 
@@ -447,13 +507,19 @@ génère la suite de cette histoire en créant une nouvelle situation
 
 
 
-			print(colored("#######################PROMPT SITUATION#######################\n%s"%self.prompt_next_situation, "green"))
+			#DISPLAY THE NEXT PROMPT OUTPUT GENERATED
+			#print(colored("#######################PROMPT SITUATION#######################\n%s"%self.prompt_next_situation, "green"))
+
+
 
 			#generate next situation
 			#for the next player turn
-			self.current_situation = self.prompt_function(self.system_general_mj_rules, self.prompt_next_situation)
+			self.current_situation = self.prompt_function(self.system_general_mj_rules, self.prompt_next_situation, "NEXT_SITUATION")
 			#print(colored(self.current_situation, "cyan"))
 			self.append_to_short_memory_function(self.current_situation)
+
+
+			os.system("cls")
 
 
 
@@ -477,6 +543,23 @@ génère la suite de cette histoire en créant une nouvelle situation
 
 
 	def create_prompt_function(self):
+		self.system_general_python_rules = """
+Oublie les instructions précédentes!
+- De cette requête tu ne dois retourner qu'un object python
+- Tu ne dois rien retourner en dehors de cet objet python
+- n'écris pas de texte ni avant ni après cet objet python
+- veille à ne pas comettre de fautes d'orthographes
+- veille à scrupuleusement respecter la syntaxe python et à ne pas comettre de fautes de syntaxes
+"""
+		self.system_general_number_rules = """
+Oublie les instructions précédentes!
+- TU NE DOIS GENERER QU'UN NOMBRE
+- N'ECRIS PAS DE TEXTE AVANT CE NOMBRE 
+- N'ECRIS PAS DE TEXTE APRES CE NOMBRE
+- LE CONTENU DE TA GENERATION NE DOIT CONTENIR QU'UNE SEULE ET UNIQUE VALEUR NUMERIQUE!
+- N'ECRIS RIEN APRES CE NOMBRE!
+- N'ECRIS PAS DE TEXTE!
+"""
 		self.system_general_mj_rules = """
 Oublie les instructions précédentes!
 - Tu es un conteur d'histoire dans un jeu de Rôle
