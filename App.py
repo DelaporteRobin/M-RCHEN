@@ -53,6 +53,20 @@ class Application:
 
 
 
+
+		print(colored(pyfiglet.figlet_format("M-RCHEN", font="the_edge"), "red"))
+		print(colored(pyfiglet.figlet_format("Console version", font="digital")))
+
+
+		#check if the groq api key is set
+		value_key = os.environ.get("GROQ_API_KEY")
+		if type(value_key) == None:
+			print(colored("Impossible to get api key!", "red"))
+			return
+		else:
+			print(colored("Key found\n%s"%value_key, "green"))
+
+
 		self.prompt_dictionnary = {}
 
 
@@ -140,6 +154,7 @@ class Application:
 			)
 		except Exception as e:
 			print(colored("Impossible to generate!\n%s"%e, "red"))
+			sys.exit()
 		else:
 			print(colored("Generated", "green"))
 			return (chat_completion.choices[0].message.content).encode("utf-8").decode("utf-8")
