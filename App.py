@@ -349,37 +349,65 @@ Créé une première situation pour le joueur, qu'est-il sur le point de faire, 
 
 	get success and fail percentage
 	"""
-	def dice_roll_function(self, x, skill_list):
-		y = randrange(1,101)
+	def dice_roll_function(self, y, skill_list):
+		print(colored("=========================\nDICE ROLL FUNCTION\n=========================", "magenta"))
 
-		print("x = %s\ny = %s"%(x,y))
+
+
+		#Y --> RISK VALUE
+		#X --> GENERATED NUMBER OR PLAYER NUMBER
+
+		x = randrange(1,101)
+		a = x
 
 		print(colored("Searching for bonus..."))
-		print(type(skill_list))
+	
 		for skill in self.skill_list:
 			try:
 				z = int(self.character_test_dictionnary["Skills"][skill])
 			except:
 				pass
 			else:
-				print("Value added : %s"%z)
-				y+= z
+				print("Value added : [%s] %s"%(skill,z))
+				x+= z
 
 
-		print(colored("=========================\nDICE ROLL FUNCTION\n=========================", "magenta"))
+		
+		result = None
 		if x >= y:
 			print(colored("SUCCESS", "green"))
+			result = "Victoire"
 
 			ratio = ((x-y)/(100-y)) * 100
+
+			if ratio > 50:
+				print(colored("Big success", "cyan"))
+				result = "GrandeVictoire"
 
 
 		else:
 			print(colored("FAIL", "red"))
+			result = "Défaite"
 
 			ratio = (x/y) * 100
 
+			if ratio < 40:
+				print(colored("High failure", "red"))
+				result = "GrandeDéfaite"
 
-		print(x, y, ratio)
+
+		dice_roll_dictionnary = {
+			"RiskRatio":y,
+			"PlayerValueOrigin":a,
+			"PlayerValueBonus":x,
+			"Ratio":ratio,
+			"Result":result,
+		}
+
+		for key, value in dice_roll_dictionnary.items():
+			print(key, value)
+		print(colored("=========================", "magenta"))
+		return dice_roll_dictionnary
 
 
 
@@ -528,6 +556,8 @@ Voici la liste des compétences du joueur:
 
 
 
+
+
 			
 			self.prompt_risk_detection = """
 Suite à cette situation : 
@@ -538,7 +568,11 @@ Le joueur a choisi de faire cette action : [%s]
 -Entre 1 et 100, à quel point cette action est risquée / difficile à faire / demande des compétences particulières?
 -Tu dois retourner uniquement un nombre entre 1 et 100 SANS TEXTE!
 
-Prend en compte le niveau du joueur dans cette liste de compétences, qui est lié à la réalisation de cette action:
+Prend en compte le niveau du joueur dans cette liste de compétences, qui est lié à la réalisation de cette action
+Pour chaque compétence il y a une valeur entre 1 et 10, si cette valeur est faible cela signifie que le joueur est mauvais dans cette pratique
+et donc le niveau de risque doit être encore plus élevé
+
+Voici la liste des compétences du joueur qui sont concernées par cette action, avec son niveau de maîtrise pour chacune:
 """%(self.current_situation, self.options[int(player_input)])
 			for skill in self.skill_list:
 				self.prompt_risk_detection+="%s : %s"%(skill, self.character_test_dictionnary["Skills"][str(skill)])
@@ -559,16 +593,30 @@ Prend en compte le niveau du joueur dans cette liste de compétences, qui est li
 
 
 
-
+			dice_roll_text = ""
 			if risk_value > 35:
 				#LAUNCH THE DICE ROLL PROCESS
 				
-
-				self.dice_roll_function(risk_value,self.skill_list)
-
-
-				#os.system("pause")
 				
+				value = self.dice_roll_function(risk_value,self.skill_list)
+
+
+				dice_roll_text = """
+Cette action nécessitait un jet de dés, car elle était risquée ou demandait des compétences particulières
+Ce jet de dés s'est soldé par [%s] de la part du joueur
+
+Modifie la prochaine situation en fonction de l'issue de ce jet de dés
+à savoir que :
+- si c'est une victoire, cela influence positivement la prochaine situation
+- si c'est une grande victoire, cela influence très positivement la prochaine situation (chance, opportunité...)
+- si c'est une défaite, cela influence négativement la prochaine situation
+- si c'est une grande défaite, cela influence très négativement la prochaine situation du joueur
+"""
+
+
+
+
+
 
 
 
@@ -582,15 +630,28 @@ Suite à cette situation :
 le joueur a choisi cette option : [%s]
 
 
+
+%s
+
+
 génère la suite de cette histoire en créant une nouvelle situation
 - NE GENERE QUE L'HISTOIRE
 - NE FAIS PAS DE LISTE DES ACTIONS PRECEDENTES
 - TU DOIS CONSERVER TON RÔLE DE CONTEUR
-"""%(self.current_situation, self.options[int(player_input)])
+"""%(self.current_situation, self.options[int(player_input)],dice_roll_text)
 			if len(self.memory_dictionnary["ShortMemory"]) > 1:
 				self.prompt_next_situation += "\n\nVoici également un historique des dernières actions (dans l'ordre chronologique) menées par le joueur afin d'éviter les répétitions:\n"
 				for i in range(len(self.memory_dictionnary["ShortMemory"])):
 					self.prompt_next_situation+="\n%s : %s"%(i, self.memory_dictionnary["ShortMemory"][i])
+
+
+
+
+
+
+
+
+
 
 
 
