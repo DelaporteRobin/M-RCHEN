@@ -153,7 +153,8 @@ class Application:
 					}
 
 				],
-				model = "mixtral-8x7b-32768"
+				#model = "mixtral-8x7b-32768"
+				model = "gemma2-9b-it"
 			)
 		except Exception as e:
 			print(colored("Impossible to generate!\n%s"%e, "red"))
@@ -336,6 +337,58 @@ Créé une première situation pour le joueur, qu'est-il sur le point de faire, 
 
 
 
+	"""
+	generate a random number n E [0 ; 100]
+	get y E [0 ; 100] which represent the risk level
+
+	if n > y:
+		success
+	else:
+		fail
+
+
+	get success and fail percentage
+	"""
+	def dice_roll_function(self, x, skill_list):
+		y = randrange(1,101)
+
+		print("x = %s\ny = %s"%(x,y))
+
+		print(colored("Searching for bonus..."))
+		print(type(skill_list))
+		for skill in self.skill_list:
+			try:
+				z = int(self.character_test_dictionnary["Skills"][skill])
+			except:
+				pass
+			else:
+				print("Value added : %s"%z)
+				y+= z
+
+
+		print(colored("=========================\nDICE ROLL FUNCTION\n=========================", "magenta"))
+		if x >= y:
+			print(colored("SUCCESS", "green"))
+
+			ratio = ((x-y)/(100-y)) * 100
+
+
+		else:
+			print(colored("FAIL", "red"))
+
+			ratio = (x/y) * 100
+
+
+		print(x, y, ratio)
+
+
+
+
+
+
+
+
+
 
 
 
@@ -349,7 +402,7 @@ Créé une première situation pour le joueur, qu'est-il sur le point de faire, 
 
 
 			os.system("cls")
-			print(colored(pyfiglet.figlet_format("\nM-RCHEN", font="the_edge"), "red"))
+			print(colored(pyfiglet.figlet_format("\nM-RCHEN", font="bloody"), "red"))
 
 
 			
@@ -426,32 +479,8 @@ Créé un nouveau résumé de cette histoire en gardant toutes les informations 
 """%(self.memory_dictionnary["LongMemory"], self.current_situation)
 
 
-			
-			self.prompt_risk_detection = """
-Suite à cette situation : 
-[%s]
 
-Le joueur a choisi de faire cette action : [%s]
-
--Entre 1 et 100, à quel point cette action est risquée / difficile à faire / demande des compétences particulières?
--Tu dois retourner uniquement un nombre entre 1 et 100 SANS TEXTE!
-"""%(self.current_situation, self.options[int(player_input)])
-			while True:
-				try:
-					risk_value = int(self.prompt_function(self.system_general_number_rules, self.prompt_risk_detection, "RISK_DETECTION"))
-				except Exception as e:
-					print(colored(e, "red"))
-					continue
-				else:
-					print(colored("Risk value generated : %s"%(risk_value), "yellow"))
-					break
-
-
-
-
-			if risk_value > 45:
-				#LAUNCH THE DICE ROLL PROCESS
-				self.prompt_skill_detection = """
+			self.prompt_skill_detection = """
 Suite à cette situation : 
 [%s]
 
@@ -465,6 +494,8 @@ par le fait de faire cette action de cette manière
 
 - n'ajoute une compétence que si elle est vraiment logiquement concernées par cette situation
 
+- TU NE DOIS PAS CHOISIR DE COMPETENCES QUI NE FIGURE PAS DANS LA LISTE DES COMPETENCES DU JOUEUR
+
 - tu n'es pas obligé de mettre plusieurs compétences
 - tu n'es pas obligé de mettre plusieurs compétences
 - tu n'es pas obligé de mettre plusieurs compétences
@@ -473,10 +504,70 @@ Voici la liste des compétences du joueur:
 %s
 """%(self.current_situation, self.options[int(player_input)],list(self.character_test_dictionnary["Skills"].keys()))
 
-				self.skill_list = self.prompt_function(self.system_general_python_rules, self.prompt_skill_detection, "SKILL_LIST")
-				print("SKILLS")
-				print(self.skill_list)
-				os.system("pause")
+			#find skills related to the situation
+			#transform generated output into python list
+			while True:
+				try:
+
+					self.skill_list = ast.literal_eval(self.prompt_function(self.system_general_python_rules, self.prompt_skill_detection, "SKILL_LIST"))
+				except Exception as e:
+					continue
+				else:
+					
+					break
+
+			#check for skills existence in character skill dictionnary
+			skill_list_copy = self.skill_list
+			for skill in skill_list_copy:
+				if skill not in list(self.character_test_dictionnary["Skills"].keys()):
+					self.skill_list.remove(skill)
+			print("Skills list : %s"%self.skill_list)
+
+
+
+
+
+
+			
+			self.prompt_risk_detection = """
+Suite à cette situation : 
+[%s]
+
+Le joueur a choisi de faire cette action : [%s]
+
+-Entre 1 et 100, à quel point cette action est risquée / difficile à faire / demande des compétences particulières?
+-Tu dois retourner uniquement un nombre entre 1 et 100 SANS TEXTE!
+
+Prend en compte le niveau du joueur dans cette liste de compétences, qui est lié à la réalisation de cette action:
+"""%(self.current_situation, self.options[int(player_input)])
+			for skill in self.skill_list:
+				self.prompt_risk_detection+="%s : %s"%(skill, self.character_test_dictionnary["Skills"][str(skill)])
+
+			while True:
+				try:
+					risk_value = int(self.prompt_function(self.system_general_number_rules, self.prompt_risk_detection, "RISK_DETECTION"))
+				except Exception as e:
+					print(colored(e, "red"))
+					continue
+				else:
+					print(colored("Risk value generated : %s"%(risk_value), "yellow"))
+					break
+
+
+
+
+
+
+
+
+			if risk_value > 35:
+				#LAUNCH THE DICE ROLL PROCESS
+				
+
+				self.dice_roll_function(risk_value,self.skill_list)
+
+
+				#os.system("pause")
 				
 
 
@@ -513,13 +604,18 @@ génère la suite de cette histoire en créant une nouvelle situation
 
 
 			#generate next situation
-			#for the next player turn
-			self.current_situation = self.prompt_function(self.system_general_mj_rules, self.prompt_next_situation, "NEXT_SITUATION")
-			#print(colored(self.current_situation, "cyan"))
-			self.append_to_short_memory_function(self.current_situation)
+			while True:
+
+				#for the next player turn
+				self.current_situation = self.prompt_function(self.system_general_mj_rules, self.prompt_next_situation, "NEXT_SITUATION")
+				if (type(self.current_situation) != None) and (self.current_situation != "None"):
+					self.append_to_short_memory_function(self.current_situation)
+					break
+					#print(colored(self.current_situation, "cyan"))
+				
 
 
-			os.system("cls")
+			os.system("pause")
 
 
 

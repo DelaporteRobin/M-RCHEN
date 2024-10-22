@@ -1,14 +1,13 @@
 # M-RCHEN
 A small RPG in terminal told by an IA, all adventures will be different and impredictable
 
-## TASKLIST
+## TASKLIST FOR DEV
 
-To generate:
-	beginning of the story:
-		define the role of the AI model in the story
-		don't have the right to go out from the story
-
-		define the global context of the story
-		define the context of the character in the story
-
-		
+- add life point system to the player 
+- add the influence system after dice roll
+- add inventory modification
+- add story custom field for user
+- split the code into files
+- create the textual mode
+- create the console mode
+- create the config file for player (json file for player stats?)
