@@ -63,6 +63,7 @@ class Application:
 			"CharacterStory":None,
 			"ShortMemory":[],
 			"LongMemory":None,
+			"CreatureDictionnary": {}
 		}
 
 		self.current_situation = None
@@ -99,6 +100,9 @@ class Application:
 				"magie illusoire":0,
 			}
 		}
+
+
+		self.creature_dictionnary = {}
 
 
 
@@ -463,9 +467,13 @@ Génère une liste python contenant 3 phrases qui seront les prochaines actions 
 				try:
 					generated = (self.prompt_function(self.system_general_mj_rules, self.prompt_options, "OPTIONS"))
 					self.options = ast.literal_eval(generated)
+					assert len(self.options) == 3
 				except Exception as e:
 					print(colored("Wrong options generation\n%s"%e, "red"))
 					print(colored(generated, "red"))
+					continue
+				except AssertionError:
+					print(colored("Wrong format for options list", "red"))
 					continue
 				else:
 					break
@@ -673,7 +681,119 @@ génère la suite de cette histoire en créant une nouvelle situation
 					self.append_to_short_memory_function(self.current_situation)
 					break
 					#print(colored(self.current_situation, "cyan"))
-				
+
+
+
+
+			print(colored(self.current_situation, "magenta"))
+
+		
+
+
+
+
+
+
+
+
+
+			#CHECK FOR CREATURES EVENT
+
+			self.prompt_check_for_creature = '''
+Dans cette nouvelle situation :
+[%s]
+
+Est ce qu'une créature intervient / interragit avec le joueur (qu'elle soit belliqueuse ou passive)
+
+- TU DOIS LISTER TOUTES LES CREATURES QUI SONT CLAIREMENT MENTIONNEES DANS CE TEXTE
+- TU DOIS SURTOUT MENTIONNER LES CREATURES AYANT UNE INTERACTION QUELCONQUES AVEC LE JOUEUR
+- TU NE DOIS NOTIFIER QUE LES CREATURES QUE LE JOUEUR A DIRECTEMENT IDENTIFIEE
+- TU NE DOIS NOTIFIER QUE LES CREATURES QUE LE JOUEUR VOIT DIRECTEMENT
+- TU NE DOIS PAS NOTIFIER UNE CREATURE SI ELLE CORRESPOND QU'A UN VAGUE BRUIT ENTENDU PAR LE JOUEUR
+
+Génère un dictionnaire python de cette forme 
+{
+	"creatureDetected":True/False,
+	"creatureExists":True/False,
+	"creatureNumber":int()
+}
+
+- creatureDetected correspond à une valeur booléenne "est ce qu'une créature est mentionnée dans cette situation"
+- creatureExists correspond à "est ce que cette / ces créature(s) étai(ent) déjà mentionnée(s) plus tôt dans l'histoire"
+- creatureNumber correspond au nombre de créatures détectées
+
+Voici la liste des créatures déjà sauvegardées:
+%s
+
+Voici la liste des dernières actions menées par le joueur
+'''%(self.current_situation, list(self.memory_dictionnary["CreatureDictionnary"].keys()))
+			for situation in self.memory_dictionnary["ShortMemory"]:
+				self.prompt_check_for_creature+= "\n-%s"%situation
+			while True:
+				try:
+					self.check_for_creature_dictionnary = ast.literal_eval(self.prompt_function(self.system_general_python_rules, self.prompt_check_for_creature, "CHECK_CREATURE"))
+				except Exception as e:
+					print(colored(e, "red"))
+				else:
+					for key, value in self.check_for_creature_dictionnary.items():
+						print(colored(key, "cyan"), value)
+					break
+
+
+
+			if self.check_for_creature_dictionnary["creatureDetected"] == True:
+				#create a new creature and save it in the creature dictionnary
+				#create a new creature for 
+				self.prompt_create_creature = '''
+Dans cette situation une nouvelle ou plusieurs créature(s) est(sont) mentionnée(s):
+[%s]
+
+Elles sont au nombre de %s
+
+Créé un dictionnaire de cette forme pour contenir toutes les nouvelles créatures concernées
+
+{
+	creatureName1: {
+		"creatureLifePoint":int(1,100),
+		"creatureStatut":"alive",
+	},
+	creatureName2 : {
+		...
+	},
+	...
+}
+
+- récupère dans le texte de la situation le nom de la nouvelle créature, en vérifiant que ce nom n'est pas déjà utilisé dans le dicitonnaire de créature (modifie le un peu dans ce cas)
+- donne à cette créature un nom qui est au plus proche du nom mentionné dans le texte ci-dessus
+- donne à cette créature un nombre de point de vie cohérent avec la puissance supposé de cette créature par rapport au joueur.
+
+Voici la liste des créatures déjà existantes : %s
+'''%(self.current_situation, self.check_for_creature_dictionnary["creatureNumber"], list(self.memory_dictionnary["CreatureDictionnary"].keys()))
+				while True:
+					try:
+						self.new_creature_dictionnary = ast.literal_eval(self.prompt_function(self.system_general_python_rules, self.prompt_create_creature, "CREATE_CREATURE"))
+					except Exception as e:
+						print(colored(e, "red"))
+					else:
+						if len(list(self.new_creature_dictionnary.keys())) > 0:
+							creature_dictionnary = self.memory_dictionnary["CreatureDictionnary"]
+							creature_dictionnary.update(self.new_creature_dictionnary)
+							self.memory_dictionnary["CreatureDictionnary"] = creature_dictionnary
+							self.save_game_function()
+							#self.memory_dictionnary["CreatureDictionnary"] = self.memory_dictionnary["CreatureDictionnary"].update(self.new_creature_dictionnary)
+
+
+							print(colored("NEW CREATURE ADDED", "green"))
+							for key, value in self.new_creature_dictionnary.items():
+								print(colored(key, "cyan"), value)
+
+						break
+
+
+
+			
+
+
 
 
 			os.system("pause")
